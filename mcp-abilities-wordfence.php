@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -123,25 +123,31 @@ function mcp_register_wordfence_abilities(): void {
 					$scan_running = (bool) wfConfig::get( 'scanRunning', 0 );
 				}
 
-				// Count issues.
+				// Count issues from Wordfence's wfIssues table.
 				$issues_count = 0;
 				$issues_table = $prefix . 'wfIssues';
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
 				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $issues_table ) ) === $issues_table ) {
-					$issues_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$issues_table} WHERE status = 'new'" );
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
+					$issues_count = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . esc_sql( $issues_table ) . '` WHERE status = %s', 'new' ) );
 				}
 
-				// Count blocked IPs.
+				// Count blocked IPs from Wordfence's wfBlocks table.
 				$blocked_count = 0;
 				$blocks_table = $prefix . 'wfBlocks';
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
 				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $blocks_table ) ) === $blocks_table ) {
-					$blocked_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$blocks_table}" );
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
+					$blocked_count = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $blocks_table ) . '`' );
 				}
 
-				// Count locked out users.
+				// Count locked out users from Wordfence's wfLockedOut table.
 				$locked_count = 0;
 				$lockout_table = $prefix . 'wfLockedOut';
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
 				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $lockout_table ) ) === $lockout_table ) {
-					$locked_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$lockout_table}" );
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
+					$locked_count = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $lockout_table ) . '`' );
 				}
 
 				// Check premium status.
@@ -536,6 +542,7 @@ function mcp_register_wordfence_abilities(): void {
 				$table  = $prefix . 'wfIssues';
 
 				// Check if table exists.
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check.
 				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
 					return array(
 						'success' => false,
@@ -548,22 +555,36 @@ function mcp_register_wordfence_abilities(): void {
 				$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 				$offset   = ( $page - 1 ) * $per_page;
 
-				$where = '';
-				if ( $status !== 'all' ) {
-					$where = $wpdb->prepare( ' WHERE status = %s', $status );
+				// Build query based on status filter.
+				// Using Wordfence's wfIssues table which is created and managed by Wordfence plugin.
+				// Table name is safe: WordPress base_prefix + hardcoded 'wfIssues' suffix.
+				if ( 'all' === $status ) {
+					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+					$total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" );
+					$results = $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM `{$table}` ORDER BY time DESC LIMIT %d OFFSET %d",
+							$per_page,
+							$offset
+						),
+						ARRAY_A
+					);
+					// phpcs:enable
+				} else {
+					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+					$total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$table}` WHERE status = %s", $status ) );
+					$results = $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM `{$table}` WHERE status = %s ORDER BY time DESC LIMIT %d OFFSET %d",
+							$status,
+							$per_page,
+							$offset
+						),
+						ARRAY_A
+					);
+					// phpcs:enable
 				}
-
-				$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}{$where}" );
 				$pages = (int) ceil( $total / $per_page );
-
-				$results = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM {$table}{$where} ORDER BY time DESC LIMIT %d OFFSET %d",
-						$per_page,
-						$offset
-					),
-					ARRAY_A
-				);
 
 				$items = array();
 				foreach ( $results as $row ) {
