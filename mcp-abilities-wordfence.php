@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -222,15 +222,10 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
-				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfBlocks';
-
-				// Check if table exists.
-				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				if ( ! class_exists( 'wfBlock' ) ) {
 					return array(
 						'success' => false,
-						'message' => 'Wordfence blocks table not found.',
+						'message' => 'wfBlock class not available.',
 					);
 				}
 
@@ -238,33 +233,23 @@ function mcp_register_wordfence_abilities(): void {
 				$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 				$offset   = ( $page - 1 ) * $per_page;
 
-				$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
-				$pages = (int) ceil( $total / $per_page );
+				// Get IP blocks only (prefetch=true to load all data).
+				$all_blocks = wfBlock::ipBlocks( true );
+				$total      = count( $all_blocks );
+				$pages      = (int) ceil( $total / $per_page );
 
-				$results = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT IP, blockedTime, reason, permanent, wfsn FROM {$table} ORDER BY blockedTime DESC LIMIT %d OFFSET %d",
-						$per_page,
-						$offset
-					),
-					ARRAY_A
-				);
+				// Slice for pagination.
+				$blocks = array_slice( $all_blocks, $offset, $per_page );
 
 				$items = array();
-				foreach ( $results as $row ) {
-					$ip = '';
-					if ( function_exists( 'wfUtils::inet_ntop' ) ) {
-						$ip = wfUtils::inet_ntop( $row['IP'] );
-					} else {
-						$ip = inet_ntop( $row['IP'] );
-					}
-
+				foreach ( $blocks as $block ) {
 					$items[] = array(
-						'ip'           => $ip,
-						'blocked_time' => gmdate( 'Y-m-d H:i:s', (int) $row['blockedTime'] ),
-						'reason'       => $row['reason'],
-						'permanent'    => (bool) $row['permanent'],
-						'from_network' => (bool) $row['wfsn'],
+						'id'           => $block->id,
+						'ip'           => $block->ip,
+						'blocked_time' => gmdate( 'Y-m-d H:i:s', (int) $block->blockedTime ),
+						'reason'       => $block->reason,
+						'type'         => wfBlock::nameForType( $block->type ),
+						'expiration'   => $block->expiration > 0 ? gmdate( 'Y-m-d H:i:s', (int) $block->expiration ) : 'never',
 					);
 				}
 
@@ -349,11 +334,22 @@ function mcp_register_wordfence_abilities(): void {
 				$reason    = isset( $input['reason'] ) ? sanitize_text_field( $input['reason'] ) : 'Blocked via MCP';
 				$permanent = ! empty( $input['permanent'] );
 
-				// Use Wordfence's log class to block IP.
-				if ( class_exists( 'wfLog' ) ) {
+				// Use Wordfence 8.x wfBlock class.
+				if ( class_exists( 'wfBlock' ) ) {
 					try {
-						$wfLog = wordfence::getLog();
-						$wfLog->blockIP( $ip, $reason, false, $permanent );
+						// Check if already blocked.
+						$existing = wfBlock::findIPBlock( $ip );
+						if ( $existing ) {
+							return array(
+								'success' => true,
+								'ip'      => $ip,
+								'message' => 'IP already blocked.',
+							);
+						}
+
+						// DURATION_FOREVER = null for permanent, otherwise seconds.
+						$duration = $permanent ? null : wfBlock::blockDuration();
+						wfBlock::createIP( $reason, $ip, $duration );
 
 						return array(
 							'success' => true,
@@ -369,44 +365,10 @@ function mcp_register_wordfence_abilities(): void {
 					}
 				}
 
-				// Fallback: direct database insert.
-				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfBlocks';
-
-				$ip_bin = inet_pton( $ip );
-				if ( $ip_bin === false ) {
-					return array(
-						'success' => false,
-						'ip'      => $ip,
-						'message' => 'Failed to convert IP address.',
-					);
-				}
-
-				$result = $wpdb->replace(
-					$table,
-					array(
-						'IP'          => $ip_bin,
-						'blockedTime' => time(),
-						'reason'      => $reason,
-						'permanent'   => $permanent ? 1 : 0,
-						'wfsn'        => 0,
-					),
-					array( '%s', '%d', '%s', '%d', '%d' )
-				);
-
-				if ( $result === false ) {
-					return array(
-						'success' => false,
-						'ip'      => $ip,
-						'message' => 'Database error while blocking IP.',
-					);
-				}
-
 				return array(
-					'success' => true,
+					'success' => false,
 					'ip'      => $ip,
-					'message' => $permanent ? 'IP permanently blocked.' : 'IP blocked.',
+					'message' => 'wfBlock class not available.',
 				);
 			},
 			'permission_callback' => function (): bool {
@@ -469,11 +431,19 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
-				// Use Wordfence's log class to unblock IP.
-				if ( class_exists( 'wfLog' ) ) {
+				// Use Wordfence 8.x wfBlock class.
+				if ( class_exists( 'wfBlock' ) ) {
 					try {
-						$wfLog = wordfence::getLog();
-						$wfLog->unblockIP( $ip );
+						$block = wfBlock::findIPBlock( $ip );
+						if ( ! $block ) {
+							return array(
+								'success' => true,
+								'ip'      => $ip,
+								'message' => 'IP was not in block list.',
+							);
+						}
+
+						wfBlock::removeBlockIDs( array( $block->id ) );
 
 						return array(
 							'success' => true,
@@ -489,42 +459,10 @@ function mcp_register_wordfence_abilities(): void {
 					}
 				}
 
-				// Fallback: direct database delete.
-				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfBlocks';
-
-				$ip_bin = inet_pton( $ip );
-				if ( $ip_bin === false ) {
-					return array(
-						'success' => false,
-						'ip'      => $ip,
-						'message' => 'Failed to convert IP address.',
-					);
-				}
-
-				$result = $wpdb->delete( $table, array( 'IP' => $ip_bin ), array( '%s' ) );
-
-				if ( $result === false ) {
-					return array(
-						'success' => false,
-						'ip'      => $ip,
-						'message' => 'Database error while unblocking IP.',
-					);
-				}
-
-				if ( $result === 0 ) {
-					return array(
-						'success' => true,
-						'ip'      => $ip,
-						'message' => 'IP was not in block list.',
-					);
-				}
-
 				return array(
-					'success' => true,
+					'success' => false,
 					'ip'      => $ip,
-					'message' => 'IP unblocked.',
+					'message' => 'wfBlock class not available.',
 				);
 			},
 			'permission_callback' => function (): bool {
@@ -712,15 +650,10 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
-				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfLockedOut';
-
-				// Check if table exists.
-				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				if ( ! class_exists( 'wfBlock' ) ) {
 					return array(
 						'success' => false,
-						'message' => 'Wordfence lockouts table not found.',
+						'message' => 'wfBlock class not available.',
 					);
 				}
 
@@ -728,28 +661,23 @@ function mcp_register_wordfence_abilities(): void {
 				$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 				$offset   = ( $page - 1 ) * $per_page;
 
-				$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
-				$pages = (int) ceil( $total / $per_page );
+				// Get lockouts (prefetch=true to load all data).
+				$all_lockouts = wfBlock::lockouts( true );
+				$total        = count( $all_lockouts );
+				$pages        = (int) ceil( $total / $per_page );
 
-				$results = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT IP, blockedTime, reason, lastAttempt, blockedHits FROM {$table} ORDER BY blockedTime DESC LIMIT %d OFFSET %d",
-						$per_page,
-						$offset
-					),
-					ARRAY_A
-				);
+				// Slice for pagination.
+				$lockouts = array_slice( $all_lockouts, $offset, $per_page );
 
 				$items = array();
-				foreach ( $results as $row ) {
-					$ip = inet_ntop( $row['IP'] );
-
+				foreach ( $lockouts as $lockout ) {
 					$items[] = array(
-						'ip'            => $ip,
-						'blocked_time'  => gmdate( 'Y-m-d H:i:s', (int) $row['blockedTime'] ),
-						'reason'        => $row['reason'],
-						'last_attempt'  => (int) $row['lastAttempt'] > 0 ? gmdate( 'Y-m-d H:i:s', (int) $row['lastAttempt'] ) : null,
-						'blocked_hits'  => (int) $row['blockedHits'],
+						'id'            => $lockout->id,
+						'ip'            => $lockout->ip,
+						'blocked_time'  => gmdate( 'Y-m-d H:i:s', (int) $lockout->blockedTime ),
+						'reason'        => $lockout->reason,
+						'expiration'    => $lockout->expiration > 0 ? gmdate( 'Y-m-d H:i:s', (int) $lockout->expiration ) : 'never',
+						'blocked_hits'  => (int) $lockout->blockedHits,
 					);
 				}
 
@@ -821,36 +749,24 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
-				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfLockedOut';
-
-				$ip_bin = inet_pton( $ip );
-				if ( $ip_bin === false ) {
+				if ( ! class_exists( 'wfBlock' ) ) {
 					return array(
 						'success' => false,
 						'ip'      => $ip,
-						'message' => 'Failed to convert IP address.',
+						'message' => 'wfBlock class not available.',
 					);
 				}
 
-				$result = $wpdb->delete( $table, array( 'IP' => $ip_bin ), array( '%s' ) );
-
-				if ( $result === false ) {
-					return array(
-						'success' => false,
-						'ip'      => $ip,
-						'message' => 'Database error while unlocking IP.',
-					);
-				}
-
-				if ( $result === 0 ) {
+				$lockout = wfBlock::lockoutForIP( $ip );
+				if ( ! $lockout ) {
 					return array(
 						'success' => true,
 						'ip'      => $ip,
 						'message' => 'IP was not in lockout list.',
 					);
 				}
+
+				wfBlock::removeBlockIDs( array( $lockout->id ) );
 
 				return array(
 					'success' => true,
