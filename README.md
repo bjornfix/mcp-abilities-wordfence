@@ -2,7 +2,7 @@
 
 Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/). Monitor security status, manage blocked IPs, view scan issues, and control lockouts via the Abilities API.
 
-**Stable tag: 1.0.2**
+**Stable tag: 1.0.3**
 
 ## Requirements
 
@@ -93,6 +93,9 @@ Response:
 ```
 
 ## Changelog
+
+### 1.0.3
+- Simplify active checks and cache table existence per request
 
 ### 1.0.2
 - Improved: Database queries now use esc_sql() and proper $wpdb->prepare() for WordPress.org compliance
