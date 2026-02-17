@@ -2,7 +2,7 @@
 Contributors: devenia
 Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
-Tested up to: 6.9
+Tested up to: 6.9.1
 Requires PHP: 8.0
 Stable tag: 1.0.6
 License: GPLv2 or later

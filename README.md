@@ -6,6 +6,7 @@ Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plug
 
 ## Requirements
 
+- WordPress 6.9.1 (latest tested)
 - [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) (core plugin)
 - [Wordfence Security](https://wordpress.org/plugins/wordfence/) plugin
 
