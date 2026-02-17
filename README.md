@@ -2,7 +2,7 @@
 
 Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/). Monitor security status, manage blocked IPs, view scan issues, and control lockouts via the Abilities API.
 
-**Stable tag: 1.0.3**
+**Stable tag: 1.0.6**
 
 ## Requirements
 
@@ -93,6 +93,17 @@ Response:
 ```
 
 ## Changelog
+
+### 1.0.6
+- Fixed: `wordfence/get-status` callback now accepts null input from proxy adapters
+
+### 1.0.5
+- Fixed: no-input abilities now accept `null` input for proxy adapters that drop empty objects
+- Fixed: added optional no-op input key (`_`) for proxy adapters that require non-empty objects
+
+### 1.0.4
+- Fixed: Compatibility for no-input abilities in proxy stacks that pass empty objects as arrays
+- Fixed: Clarified inactive plugin message (`Wordfence plugin is not active.`)
 
 ### 1.0.3
 - Simplify active checks and cache table existence per request

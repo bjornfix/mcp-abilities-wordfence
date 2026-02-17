@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.3
+ * Version: 1.0.6
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -49,7 +49,10 @@ function mcp_wordfence_require_active(): ?array {
 	if ( mcp_wordfence_is_active() ) {
 		return null;
 	}
-	return array( 'success' => false, 'message' => 'Wordfence not active.' );
+	return array(
+		'success' => false,
+		'message' => 'Wordfence plugin is not active.',
+	);
 }
 
 /**
@@ -98,8 +101,15 @@ function mcp_register_wordfence_abilities(): void {
 			'description'         => 'Get overall Wordfence security status including firewall mode, last scan time, issues count, and blocked IPs count.',
 			'category'            => 'site',
 			'input_schema'        => array(
-				'type'                 => 'object',
-				'properties'           => array(),
+				// Compatibility: some proxy adapters drop empty objects entirely.
+				// Accept null input and a no-op field for non-empty object transport.
+				'type'                 => array( 'object', 'array', 'null' ),
+				'properties'           => array(
+					'_' => array(
+						'type'        => array( 'string', 'number', 'boolean', 'null' ),
+						'description' => 'Optional no-op compatibility field.',
+					),
+				),
 				'additionalProperties' => false,
 			),
 			'output_schema'       => array(
@@ -117,7 +127,7 @@ function mcp_register_wordfence_abilities(): void {
 					'message'           => array( 'type' => 'string' ),
 				),
 			),
-			'execute_callback'    => function ( array $input = array() ): array {
+			'execute_callback'    => function ( $input = null ): array {
 				if ( $error = mcp_wordfence_require_active() ) {
 					return $error;
 				}
@@ -218,8 +228,13 @@ function mcp_register_wordfence_abilities(): void {
 			'description'         => 'Get Wordfence scan status and timestamps.',
 			'category'            => 'site',
 			'input_schema'        => array(
-				'type'                 => 'object',
-				'properties'           => array(),
+				'type'                 => array( 'object', 'array', 'null' ),
+				'properties'           => array(
+					'_' => array(
+						'type'        => array( 'string', 'number', 'boolean', 'null' ),
+						'description' => 'Optional no-op compatibility field.',
+					),
+				),
 				'additionalProperties' => false,
 			),
 			'output_schema'       => array(
@@ -284,8 +299,13 @@ function mcp_register_wordfence_abilities(): void {
 			'description'         => 'Start a Wordfence scan if supported by the installed version.',
 			'category'            => 'site',
 			'input_schema'        => array(
-				'type'                 => 'object',
-				'properties'           => array(),
+				'type'                 => array( 'object', 'array', 'null' ),
+				'properties'           => array(
+					'_' => array(
+						'type'        => array( 'string', 'number', 'boolean', 'null' ),
+						'description' => 'Optional no-op compatibility field.',
+					),
+				),
 				'additionalProperties' => false,
 			),
 			'output_schema'       => array(
