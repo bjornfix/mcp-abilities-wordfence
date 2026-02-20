@@ -503,21 +503,23 @@ function mcp_register_wordfence_abilities(): void {
 				$offset   = ( $page - 1 ) * $per_page;
 
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Wordfence live traffic data.
-				$rows = $wpdb->get_results(
-					$wpdb->prepare(
-						'SELECT id, ip, ctime, url, ua, action, userID, countryCode FROM `' . esc_sql( $table ) . '` ORDER BY ctime DESC LIMIT %d OFFSET %d',
-						$per_page,
-						$offset
-					),
-					ARRAY_A
-				);
+					$rows = $wpdb->get_results(
+						$wpdb->prepare(
+							'SELECT id, ip, ctime, url, ua, action, userID, countryCode FROM `' . esc_sql( $table ) . '` ORDER BY ctime DESC LIMIT %d OFFSET %d',
+							$per_page,
+							$offset
+						),
+						ARRAY_A
+					);
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only count query for pagination metadata.
+					$total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $table ) . '`' );
 
-				return array(
-					'success' => true,
-					'traffic' => $rows,
-					'total'   => count( $rows ),
-				);
-			},
+					return array(
+						'success' => true,
+						'traffic' => $rows,
+						'total'   => $total,
+					);
+				},
 			'permission_callback' => function (): bool {
 				return current_user_can( 'manage_options' );
 			},
@@ -628,13 +630,13 @@ function mcp_register_wordfence_abilities(): void {
 			'permission_callback' => function (): bool {
 				return current_user_can( 'manage_options' );
 			},
-			'meta'                => array(
-				'annotations' => array(
-					'readonly'    => false,
-					'destructive' => false,
-					'idempotent'  => true,
+				'meta'                => array(
+					'annotations' => array(
+						'readonly'    => false,
+						'destructive' => true,
+						'idempotent'  => true,
+					),
 				),
-			),
 		)
 	);
 
@@ -719,13 +721,13 @@ function mcp_register_wordfence_abilities(): void {
 			'permission_callback' => function (): bool {
 				return current_user_can( 'manage_options' );
 			},
-			'meta'                => array(
-				'annotations' => array(
-					'readonly'    => false,
-					'destructive' => false,
-					'idempotent'  => true,
+				'meta'                => array(
+					'annotations' => array(
+						'readonly'    => false,
+						'destructive' => true,
+						'idempotent'  => true,
+					),
 				),
-			),
 		)
 	);
 
@@ -797,30 +799,43 @@ function mcp_register_wordfence_abilities(): void {
 				$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 				$offset   = ( $page - 1 ) * $per_page;
 
-				// Build query based on status filter.
-				// Using Wordfence's wfIssues table which is created and managed by Wordfence plugin.
-				// Table name is safe: WordPress base_prefix + hardcoded 'wfIssues' suffix.
-				if ( 'all' === $status ) {
-					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-					$total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" );
-					$results = $wpdb->get_results(
-						$wpdb->prepare(
-							"SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM `{$table}` ORDER BY time DESC LIMIT %d OFFSET %d",
-							$per_page,
-							$offset
-						),
-						ARRAY_A
-					);
-					// phpcs:enable
-				} else {
-					// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-					$total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$table}` WHERE status = %s", $status ) );
-					$results = $wpdb->get_results(
-						$wpdb->prepare(
-							"SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM `{$table}` WHERE status = %s ORDER BY time DESC LIMIT %d OFFSET %d",
-							$status,
-							$per_page,
-							$offset
+					// Build query based on status filter.
+					// Using Wordfence's wfIssues table which is created and managed by Wordfence plugin.
+					// Table name is safe: WordPress base_prefix + hardcoded 'wfIssues' suffix.
+					if ( 'all' === $status ) {
+						// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+						$total   = (int) $wpdb->get_var(
+							$wpdb->prepare(
+								'SELECT COUNT(*) FROM %i',
+								$table
+							)
+						);
+						$results = $wpdb->get_results(
+							$wpdb->prepare(
+								'SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM %i ORDER BY time DESC LIMIT %d OFFSET %d',
+								$table,
+								$per_page,
+								$offset
+							),
+							ARRAY_A
+						);
+						// phpcs:enable
+					} else {
+						// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+						$total   = (int) $wpdb->get_var(
+							$wpdb->prepare(
+								'SELECT COUNT(*) FROM %i WHERE status = %s',
+								$table,
+								$status
+							)
+						);
+						$results = $wpdb->get_results(
+							$wpdb->prepare(
+								'SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM %i WHERE status = %s ORDER BY time DESC LIMIT %d OFFSET %d',
+								$table,
+								$status,
+								$per_page,
+								$offset
 						),
 						ARRAY_A
 					);
@@ -921,8 +936,11 @@ function mcp_register_wordfence_abilities(): void {
 				$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 				$offset   = ( $page - 1 ) * $per_page;
 
-				// Get lockouts (prefetch=true to load all data).
-				$all_lockouts = wfBlock::lockouts( true );
+					// Avoid prefetch-heavy mode when listing lockouts.
+					$all_lockouts = wfBlock::lockouts( false );
+					if ( ! is_array( $all_lockouts ) ) {
+						$all_lockouts = array();
+					}
 				$total        = count( $all_lockouts );
 				$pages        = (int) ceil( $total / $per_page );
 

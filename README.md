@@ -2,20 +2,23 @@
 
 Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/). Monitor security status, manage blocked IPs, view scan issues, and control lockouts via the Abilities API.
 
-**Stable tag: 1.0.6**
+**Stable tag: 1.0.7**
 
 ## Requirements
 
-- WordPress 6.9.1 (latest tested)
+- WordPress 6.9 (latest tested)
 - [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) (core plugin)
 - [Wordfence Security](https://wordpress.org/plugins/wordfence/) plugin
 
-## Abilities (8)
+## Abilities (11)
 
 | Ability | Description |
 |---------|-------------|
 | `wordfence/get-status` | Get overall security status (firewall, scan, issues, blocks) |
+| `wordfence/get-scan-status` | Get current scan progress and status |
+| `wordfence/start-scan` | Start a new Wordfence scan |
 | `wordfence/list-blocked-ips` | List blocked IP addresses with reasons |
+| `wordfence/list-live-traffic` | List recent live traffic events |
 | `wordfence/block-ip` | Block an IP address temporarily or permanently |
 | `wordfence/unblock-ip` | Remove an IP from the block list |
 | `wordfence/list-scan-issues` | List security issues from scans |
@@ -94,6 +97,10 @@ Response:
 ```
 
 ## Changelog
+
+### 1.0.7
+- Fixed: removed hard plugin header dependency on `abilities-api` to avoid slug-mismatch activation blocking
+- Updated: README ability list and stable tag sync
 
 ### 1.0.6
 - Fixed: `wordfence/get-status` callback now accepts null input from proxy adapters
