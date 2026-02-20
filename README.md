@@ -1,14 +1,38 @@
 # MCP Abilities - Wordfence
 
-Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/). Monitor security status, manage blocked IPs, view scan issues, and control lockouts via the Abilities API.
+Wordfence security abilities for WordPress via MCP.
 
-**Stable tag: 1.0.7**
+[![GitHub release](https://img.shields.io/github/v/release/bjornfix/mcp-abilities-wordfence)](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
+
+**Tested up to:** 6.9
+**Stable tag:** 1.0.7
+**Requires PHP:** 8.0
+**License:** GPLv2 or later
+**License URI:** https://www.gnu.org/licenses/gpl-2.0.html
+
+## What It Does
+
+This add-on plugin exposes Wordfence security workflows through MCP (Model Context Protocol). Your AI assistant can monitor security status, run scans, and manage blocked IPs, lockouts, and allowlists.
+
+**Part of the [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/) ecosystem.**
 
 ## Requirements
 
-- WordPress 6.9 (latest tested)
-- [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) (core plugin)
+- WordPress 6.9+
+- PHP 8.0+
+- [Abilities API](https://github.com/WordPress/abilities-api) plugin
+- [MCP Adapter](https://github.com/WordPress/mcp-adapter) plugin
+- [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) core plugin
 - [Wordfence Security](https://wordpress.org/plugins/wordfence/) plugin
+
+## Installation
+
+1. Install and activate MCP Expose Abilities
+2. Install and activate Wordfence Security
+3. Download the latest release from [Releases](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
+4. Upload via WordPress Admin > Plugins > Add New > Upload Plugin
+5. Activate the plugin
 
 ## Abilities (11)
 
@@ -26,45 +50,31 @@ Wordfence security abilities for [MCP Expose Abilities](https://devenia.com/plug
 | `wordfence/unlock-ip` | Remove an IP from the lockout list |
 | `wordfence/whitelist-ip` | Add an IP to the allowlist |
 
-## Installation
-
-1. Install and activate [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities)
-2. Install and activate [Wordfence Security](https://wordpress.org/plugins/wordfence/)
-3. Download the latest release zip
-4. Upload to WordPress via Plugins > Add New > Upload Plugin
-5. Activate the plugin
-
 ## Usage Examples
 
-### Get Security Status
+### Get security status
 
 ```json
 {
-  "ability": "wordfence/get-status",
+  "ability_name": "wordfence/get-status",
   "parameters": {}
 }
 ```
 
-Response:
+### Start a scan
+
 ```json
 {
-  "success": true,
-  "wordfence_version": "7.11.5",
-  "firewall_mode": "enabled",
-  "last_scan": "2024-01-15 14:30:00",
-  "scan_running": false,
-  "issues_count": 2,
-  "blocked_ips_count": 15,
-  "locked_out_count": 3,
-  "is_premium": true
+  "ability_name": "wordfence/start-scan",
+  "parameters": {}
 }
 ```
 
-### Block an IP Address
+### Block an IP address
 
 ```json
 {
-  "ability": "wordfence/block-ip",
+  "ability_name": "wordfence/block-ip",
   "parameters": {
     "ip": "192.168.1.100",
     "reason": "Suspicious activity",
@@ -73,33 +83,10 @@ Response:
 }
 ```
 
-### List Scan Issues
-
-```json
-{
-  "ability": "wordfence/list-scan-issues",
-  "parameters": {
-    "status": "new",
-    "per_page": 20
-  }
-}
-```
-
-### Whitelist an IP
-
-```json
-{
-  "ability": "wordfence/whitelist-ip",
-  "parameters": {
-    "ip": "203.0.113.50"
-  }
-}
-```
-
 ## Changelog
 
 ### 1.0.7
-- Fixed: removed hard plugin header dependency on `abilities-api` to avoid slug-mismatch activation blocking
+- Fixed: Removed hard plugin header dependency on abilities-api to avoid slug-mismatch activation blocking
 - Updated: README ability list and stable tag sync
 
 ### 1.0.6
@@ -137,3 +124,13 @@ Response:
 ## License
 
 GPL-2.0+
+
+## Author
+
+[Devenia](https://devenia.com) - We've been doing SEO and web development since 1993.
+
+## Links
+
+- [Plugin Page](https://devenia.com/plugins/mcp-expose-abilities/)
+- [Core Plugin (MCP Expose Abilities)](https://github.com/bjornfix/mcp-expose-abilities)
+- [All Add-on Plugins](https://devenia.com/plugins/mcp-expose-abilities/#add-ons)
