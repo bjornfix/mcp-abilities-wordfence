@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.8
+ * Version: 1.0.9
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -655,12 +655,14 @@ function mcp_register_wordfence_abilities(): void {
 				$prefix = mcp_wordfence_get_table_prefix();
 				$table  = $prefix . 'wfHits';
 
-				if ( ! mcp_wordfence_table_exists( $table ) ) {
-					return array(
-						'success' => false,
-						'message' => 'Wordfence live traffic table not found.',
-					);
-				}
+					if ( ! mcp_wordfence_table_exists( $table ) ) {
+						return array(
+							'success' => true,
+							'traffic' => array(),
+							'total'   => 0,
+							'message' => 'Wordfence live traffic is unavailable on this site because the live traffic table is not present.',
+						);
+					}
 
 				$per_page = min( 200, max( 1, (int) ( $input['per_page'] ?? 50 ) ) );
 				$page     = max( 1, (int) ( $input['page'] ?? 1 ) );
@@ -951,12 +953,16 @@ function mcp_register_wordfence_abilities(): void {
 
 				// Check if table exists.
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check.
-				if ( ! mcp_wordfence_table_exists( $table ) ) {
-					return array(
-						'success' => false,
-						'message' => 'Wordfence issues table not found.',
-					);
-				}
+					if ( ! mcp_wordfence_table_exists( $table ) ) {
+						return array(
+							'success' => true,
+							'items'   => array(),
+							'total'   => 0,
+							'page'    => 1,
+							'pages'   => 0,
+							'message' => 'Wordfence scan issues are unavailable on this site because the issues table is not present.',
+						);
+					}
 
 				$status   = isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'new';
 				$per_page = isset( $input['per_page'] ) ? min( 200, max( 1, (int) $input['per_page'] ) ) : 50;

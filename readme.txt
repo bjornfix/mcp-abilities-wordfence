@@ -4,7 +4,7 @@ Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.0.8
+Stable tag: 1.0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ This add-on plugin extends [MCP Expose Abilities](https://devenia.com/plugins/mc
 5. The abilities are now available via the MCP endpoint
 
 == Changelog ==
+
+= 1.0.9 =
+* Fixed: `wordfence/list-live-traffic` now degrades cleanly to an empty result when the live-traffic table is unavailable on a site
+* Fixed: `wordfence/list-scan-issues` now degrades cleanly to an empty result when the issues table is unavailable on a site
 
 = 1.0.8 =
 * Fixed: `wordfence/get-status` now derives firewall mode from actual WAF bootstrap state when config-only status is misleading

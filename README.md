@@ -6,7 +6,7 @@ Wordfence security abilities for WordPress via MCP.
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
 **Tested up to:** 6.9
-**Stable tag:** 1.0.8
+**Stable tag:** 1.0.9
 **Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
@@ -84,6 +84,10 @@ This add-on plugin exposes Wordfence security workflows through MCP (Model Conte
 ```
 
 ## Changelog
+
+### 1.0.9
+- Fixed: `wordfence/list-live-traffic` now degrades cleanly to an empty result when the live-traffic table is unavailable on a site
+- Fixed: `wordfence/list-scan-issues` now degrades cleanly to an empty result when the issues table is unavailable on a site
 
 ### 1.0.8
 - Fixed: `wordfence/get-status` now derives firewall mode from actual WAF bootstrap state when config-only status is misleading
