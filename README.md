@@ -6,7 +6,7 @@ Wordfence security abilities for WordPress via MCP.
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
 **Tested up to:** 6.9
-**Stable tag:** 1.0.9
+**Stable tag:** 1.0.10
 **Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,12 @@ This add-on plugin exposes Wordfence security workflows through MCP (Model Conte
 3. Download the latest release from [Releases](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
 4. Upload via WordPress Admin > Plugins > Add New > Upload Plugin
 5. Activate the plugin
+
+## Changelog
+
+### 1.0.10
+
+- Fixed Wordfence table resolution on lowercase-table installs so live traffic and scan issues read the real `wfhits` and `wfissues` tables instead of treating them as missing
 
 ## Abilities (11)
 

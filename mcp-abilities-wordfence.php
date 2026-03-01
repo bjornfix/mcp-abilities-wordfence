@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.9
+ * Version: 1.0.10
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -211,11 +211,30 @@ function mcp_wordfence_count_lockouts(): int {
 }
 
 /**
- * Get Wordfence database prefix.
+ * Resolve a Wordfence table name using Wordfence's own casing rules when available.
+ *
+ * @param string $table Unprefixed Wordfence table name, e.g. `wfHits`.
+ * @return string
  */
-function mcp_wordfence_get_table_prefix(): string {
+function mcp_wordfence_get_table_name( string $table ): string {
+	if ( class_exists( 'wfDB' ) && method_exists( 'wfDB', 'networkTable' ) ) {
+		return wfDB::networkTable( $table );
+	}
+
 	global $wpdb;
-	return $wpdb->base_prefix;
+	$use_lowercase = false;
+
+	if ( class_exists( 'wfSchema' ) && method_exists( 'wfSchema', 'usingLowercase' ) ) {
+		$use_lowercase = (bool) wfSchema::usingLowercase();
+	} else {
+		$use_lowercase = (bool) get_option( 'wordfence_case', false );
+	}
+
+	if ( $use_lowercase ) {
+		$table = strtolower( $table );
+	}
+
+	return $wpdb->base_prefix . $table;
 }
 
 /**
@@ -306,8 +325,7 @@ function mcp_register_wordfence_abilities(): void {
 					}
 				} else {
 					global $wpdb;
-					$prefix       = mcp_wordfence_get_table_prefix();
-					$issues_table = $prefix . 'wfIssues';
+					$issues_table = mcp_wordfence_get_table_name( 'wfIssues' );
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
 					if ( mcp_wordfence_table_exists( $issues_table ) ) {
 						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
@@ -652,8 +670,7 @@ function mcp_register_wordfence_abilities(): void {
 				}
 
 				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfHits';
+				$table = mcp_wordfence_get_table_name( 'wfHits' );
 
 					if ( ! mcp_wordfence_table_exists( $table ) ) {
 						return array(
@@ -948,8 +965,7 @@ function mcp_register_wordfence_abilities(): void {
 				}
 
 				global $wpdb;
-				$prefix = mcp_wordfence_get_table_prefix();
-				$table  = $prefix . 'wfIssues';
+				$table = mcp_wordfence_get_table_name( 'wfIssues' );
 
 				// Check if table exists.
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check.
