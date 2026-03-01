@@ -6,7 +6,7 @@ Wordfence security abilities for WordPress via MCP.
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
 **Tested up to:** 6.9
-**Stable tag:** 1.0.10
+**Stable tag:** 1.0.11
 **Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
@@ -35,6 +35,12 @@ This add-on plugin exposes Wordfence security workflows through MCP (Model Conte
 5. Activate the plugin
 
 ## Changelog
+
+### 1.0.11
+
+- Fixed scan status reporting to use Wordfence's real completion and monitor fields instead of treating `lastScanCompleted` as a timestamp
+- Fixed `issues_count` to read from the real Wordfence issues table
+- Improved scan-start verification by checking Wordfence monitor timestamps
 
 ### 1.0.10
 

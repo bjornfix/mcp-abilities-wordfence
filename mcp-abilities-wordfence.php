@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.10
+ * Version: 1.0.11
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -161,13 +161,37 @@ function mcp_wordfence_get_scan_state(): array {
 	$end_time     = 0;
 	$scheduled    = 0;
 	$status       = '';
+	$last_attempt = 0;
 
 	if ( class_exists( 'wfConfig' ) ) {
-		$scan_running = (bool) wfConfig::get( 'scanRunning', 0 );
-		$start_time   = (int) wfConfig::get( 'lastScanStartTime', 0 );
-		$end_time     = (int) wfConfig::get( 'lastScanCompleted', 0 );
-		$scheduled    = (int) wfConfig::get( 'lastScheduledScan', 0 );
-		$status       = (string) wfConfig::get( 'lastScanStatus', '' );
+		$scan_running   = class_exists( 'wfScanner' ) && method_exists( 'wfScanner', 'shared' )
+			? (bool) wfScanner::shared()->isRunning()
+			: (bool) wfConfig::get( 'scanRunning', 0 );
+		$start_time     = (int) wfConfig::get( 'lastScheduledScanStart', 0 );
+		$end_time       = class_exists( 'wfScanner' ) && method_exists( 'wfScanner', 'shared' )
+			? (int) wfScanner::shared()->lastScanTime()
+			: (int) wfConfig::get( 'scanTime', 0 );
+		$scheduled      = class_exists( 'wfScanner' ) && method_exists( 'wfScanner', 'shared' )
+			? (int) wfScanner::shared()->nextScheduledScanTime()
+			: (int) wfConfig::get( 'lastScheduledScan', 0 );
+		$last_attempt   = (int) wfConfig::get( 'scanMonitorLastAttempt', 0 );
+		$last_completed = (string) wfConfig::get( 'lastScanCompleted', '' );
+		$failure_type   = (string) wfConfig::get( 'lastScanFailureType', '' );
+		$has_failed     = class_exists( 'wfIssues' ) && method_exists( 'wfIssues', 'hasScanFailed' )
+			? wfIssues::hasScanFailed()
+			: false;
+
+		if ( '' === $last_completed || false === $last_completed ) {
+			$status = '';
+		} elseif ( 'ok' === $last_completed ) {
+			$status = 'ok';
+		} elseif ( $has_failed ) {
+			$status = (string) $has_failed;
+		} elseif ( '' !== $failure_type ) {
+			$status = $failure_type;
+		} else {
+			$status = $last_completed;
+		}
 	}
 
 	return array(
@@ -179,6 +203,7 @@ function mcp_wordfence_get_scan_state(): array {
 		'last_scan_start_ts' => $start_time,
 		'last_scan_end_ts'   => $end_time,
 		'last_scheduled_ts'  => $scheduled,
+		'last_attempt_ts'    => $last_attempt,
 	);
 }
 
@@ -312,25 +337,14 @@ function mcp_register_wordfence_abilities(): void {
 				$firewall_mode = mcp_wordfence_get_firewall_mode();
 				$scan_state    = mcp_wordfence_get_scan_state();
 
-				// Count issues from Wordfence's wfIssues table.
+				// Count issues directly from the Wordfence issues table.
 				$issues_count = 0;
-				if ( class_exists( 'wfIssues' ) && method_exists( 'wfIssues', 'getIssues' ) ) {
-					try {
-						$issues = wfIssues::getIssues( 'new' );
-						if ( is_array( $issues ) || $issues instanceof Countable ) {
-							$issues_count = count( $issues );
-						}
-					} catch ( Throwable $e ) {
-						$issues_count = 0;
-					}
-				} else {
-					global $wpdb;
-					$issues_table = mcp_wordfence_get_table_name( 'wfIssues' );
-					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
-					if ( mcp_wordfence_table_exists( $issues_table ) ) {
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
-						$issues_count = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . esc_sql( $issues_table ) . '` WHERE status = %s', 'new' ) );
-					}
+				global $wpdb;
+				$issues_table = mcp_wordfence_get_table_name( 'wfIssues' );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time security status, Wordfence table.
+				if ( mcp_wordfence_table_exists( $issues_table ) ) {
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Wordfence table with hardcoded suffix.
+					$issues_count = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . esc_sql( $issues_table ) . '` WHERE status = %s', 'new' ) );
 				}
 
 				$blocked_count = mcp_wordfence_count_blocked_ips();
@@ -492,8 +506,10 @@ function mcp_register_wordfence_abilities(): void {
 
 				$after    = mcp_wordfence_get_scan_state();
 				$verified = (bool) $after['scan_running']
+					|| ( (int) $after['last_attempt_ts'] > (int) $before['last_attempt_ts'] )
 					|| ( (int) $after['last_scan_start_ts'] > (int) $before['last_scan_start_ts'] )
 					|| ( (string) $after['last_scan_status'] !== (string) $before['last_scan_status'] )
+					|| ( (int) $after['last_scan_end_ts'] > (int) $before['last_scan_end_ts'] )
 					|| ( (int) $after['last_scheduled_ts'] > (int) $before['last_scheduled_ts'] );
 
 				if ( false === $result ) {
