@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.11
+ * Version: 1.0.12
  * Author: Devenia
  * Author URI: https://devenia.com
  * License: GPL-2.0+
@@ -704,7 +704,7 @@ function mcp_register_wordfence_abilities(): void {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Wordfence live traffic data.
 					$rows = $wpdb->get_results(
 						$wpdb->prepare(
-							'SELECT id, ip, ctime, url, ua, action, userID, countryCode FROM `' . esc_sql( $table ) . '` ORDER BY ctime DESC LIMIT %d OFFSET %d',
+							'SELECT id, INET6_NTOA(IP) AS ip, ctime, URL AS url, UA AS ua, action, userID, statusCode, referer, actionDescription, actionData FROM `' . esc_sql( $table ) . '` ORDER BY ctime DESC LIMIT %d OFFSET %d',
 							$per_page,
 							$offset
 						),

@@ -6,7 +6,7 @@ Wordfence security abilities for WordPress via MCP.
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
 **Tested up to:** 6.9
-**Stable tag:** 1.0.11
+**Stable tag:** 1.0.12
 **Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
@@ -35,6 +35,11 @@ This add-on plugin exposes Wordfence security workflows through MCP (Model Conte
 5. Activate the plugin
 
 ## Changelog
+
+### 1.0.12
+
+- Fixed `wordfence/list-live-traffic` to query the actual current Wordfence `wfhits` columns (`IP`, `URL`, `UA`, etc.) instead of stale field names
+- Fixed live traffic results so existing tables return real rows instead of an empty `traffic` array
 
 ### 1.0.11
 
