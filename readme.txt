@@ -4,7 +4,7 @@ Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ This add-on plugin extends [MCP Expose Abilities](https://devenia.com/plugins/mc
 5. The abilities are now available via the MCP endpoint
 
 == Changelog ==
+
+= 1.0.8 =
+* Fixed: `wordfence/get-status` now derives firewall mode from actual WAF bootstrap state when config-only status is misleading
+* Fixed: `wordfence/get-status` now reports completed scan time instead of scheduled scan time
+* Fixed: `wordfence/get-status` now counts blocked IPs and lockouts via Wordfence APIs instead of raw table counts
+* Fixed: `wordfence/start-scan` now reports whether the scan start was verified instead of always claiming success
 
 = 1.0.7 =
 * Fixed: Removed hard plugin header dependency on abilities-api to avoid slug-mismatch activation blocking
