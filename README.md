@@ -5,8 +5,8 @@ Wordfence security abilities for WordPress via MCP.
 [![GitHub release](https://img.shields.io/github/v/release/bjornfix/mcp-abilities-wordfence)](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
-**Tested up to:** 6.9
-**Stable tag:** 1.0.12
+**Tested up to:** 7.0
+**Stable tag:** 1.0.13
 **Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
@@ -52,6 +52,10 @@ This add-on lets the agent inspect scan state, blocked IPs, lockouts, and live t
 5. Activate the plugin
 
 ## Changelog
+
+### 1.0.13
+
+- Updated declared WordPress compatibility to 7.0 for current plugin-check requirements
 
 ### 1.0.12
 
