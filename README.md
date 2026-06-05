@@ -1,76 +1,111 @@
 # MCP Abilities - Wordfence
 
-Wordfence security abilities for WordPress via MCP.
+Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
 
 [![GitHub release](https://img.shields.io/github/v/release/bjornfix/mcp-abilities-wordfence)](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
+[![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue.svg)](https://wordpress.org)
+[![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple.svg)](https://php.net)
 
 **Tested up to:** 7.0
 **Stable tag:** 1.0.13
-**Requires PHP:** 8.0
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
 ## What It Does
 
-This add-on plugin exposes Wordfence security workflows through MCP (Model Context Protocol). Your AI assistant can monitor security status, run scans, and manage blocked IPs, lockouts, and allowlists.
+Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
 
-**Part of the [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) ecosystem.**
+This plugin is part of the Devenia MCP abilities ecosystem. It gives an MCP-capable agent a focused, authenticated way to work with Wordfence work inside WordPress through MCP.
 
-This is one piece of a bigger open WordPress automation stack that lets AI agents do real security operations inside WordPress instead of stopping at advice.
+**Example:** "Handle this WordPress maintenance task directly." - The agent can inspect the site, call the relevant ability, and return the result without making the human click through wp-admin for every step.
 
-## Why This Is Cool
+## The Real Workflow
 
-Security work is high-value and often boring in exactly the wrong way.
+In practice, the human should not have to memorize every ability name.
 
-This add-on lets the agent inspect scan state, blocked IPs, lockouts, and live traffic, then take the smallest useful action. That means less dashboard hopping and fewer “we should deal with this later” moments.
+The normal pattern is:
+
+1. install the base MCP stack
+2. install only the add-ons the site actually needs
+3. let the agent discover the available abilities
+4. give the agent a clear task with boundaries
+5. verify the result in WordPress
+
+The human's job is mostly to describe the goal.
+The agent's job is to figure out the mechanics.
+
+## Why This Feels Different
+
+Most WordPress automation still leaves the repetitive part to the human.
+
+This plugin is different because the agent can act inside the site through a narrow, authenticated ability surface:
+
+- inspect current site state before changing anything
+- run the specific action needed for the task
+- return structured results that are easy to verify
+- keep the workflow inside WordPress instead of a separate checklist
+
+That changes the experience from:
+
+- `Here is what you should do in wp-admin`
+
+to:
+
+- `Tell the agent what needs doing, and let it carry out the work`
+
+## Before vs After
+
+### Before
+
+- ask the AI what to do
+- copy the answer into WordPress by hand
+- click through wp-admin for the repetitive bits
+- postpone maintenance because the task is tedious
+
+### After
+
+- tell the agent what needs doing
+- let it inspect the relevant WordPress state
+- let it run the targeted ability
+- verify the result and move on
+
+## Who It Is For
+
+This is a good fit for:
+
+- agencies managing WordPress sites with AI-assisted maintenance
+- operators who want agents to do real WordPress work instead of producing instructions
+- teams already using MCP Expose Abilities
+- sites where this WordPress area is updated often enough to deserve automation
+
+It is especially useful when the manual version is repetitive enough that important maintenance gets delayed.
 
 ## Documentation
 
-- [Core Plugin: MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities)
-- [MCP Wiki Home](https://github.com/bjornfix/mcp-expose-abilities/wiki)
-- [Why Teams Use It](https://github.com/bjornfix/mcp-expose-abilities/wiki/Why-Teams-Use-It)
-- [Use Cases](https://github.com/bjornfix/mcp-expose-abilities/wiki/Use-Cases)
-- [Wordfence Add-On Guide](https://github.com/bjornfix/mcp-expose-abilities/wiki/Addon-Wordfence)
+Start with the main plugin page and base stack documentation:
+
+- [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/)
+- [Plugin Page](https://devenia.com/plugins/mcp-expose-abilities/#add-ons)
 - [Getting Started](https://github.com/bjornfix/mcp-expose-abilities/wiki/Getting-Started)
+- [Install Order and Dependencies](https://github.com/bjornfix/mcp-expose-abilities/wiki/Install-Order-and-Dependencies)
 
-## Requirements
+If you are using an AI agent, the simplest instruction is often just:
 
-- WordPress 6.9+
-- PHP 8.0+
-- [Abilities API](https://github.com/WordPress/abilities-api) plugin
-- [MCP Adapter](https://github.com/WordPress/mcp-adapter) plugin
-- [MCP Expose Abilities](https://github.com/bjornfix/mcp-expose-abilities) core plugin
-- [Wordfence Security](https://wordpress.org/plugins/wordfence/) plugin
+- `Read https://github.com/bjornfix/mcp-expose-abilities and figure out the stack before making changes.`
 
-## Installation
+## Start Here
 
-1. Install and activate MCP Expose Abilities
-2. Install and activate Wordfence Security
-3. Download the latest release from [Releases](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
-4. Upload via WordPress Admin > Plugins > Add New > Upload Plugin
-5. Activate the plugin
+If you are new to the stack, use this order:
 
-## Changelog
+1. Install **Abilities API**.
+2. Install **MCP Adapter**.
+3. Install **MCP Expose Abilities**.
+4. Install **MCP Abilities - Wordfence**.
+5. Confirm the new abilities appear in discovery.
+6. Give the agent a clear task that uses this add-on.
 
-### 1.0.13
-
-- Updated declared WordPress compatibility to 7.0 for current plugin-check requirements
-
-### 1.0.12
-
-- Fixed `wordfence/list-live-traffic` to query the actual current Wordfence `wfhits` columns (`IP`, `URL`, `UA`, etc.) instead of stale field names
-- Fixed live traffic results so existing tables return real rows instead of an empty `traffic` array
-
-### 1.0.11
-
-- Fixed scan status reporting to use Wordfence's real completion and monitor fields instead of treating `lastScanCompleted` as a timestamp
-- Fixed `issues_count` to read from the real Wordfence issues table
-- Improved scan-start verification by checking Wordfence monitor timestamps
-
-### 1.0.10
-
-- Fixed Wordfence table resolution on lowercase-table installs so live traffic and scan issues read the real `wfhits` and `wfissues` tables instead of treating them as missing
+If you skip base-stack verification and start with add-ons immediately, troubleshooting gets harder than it needs to be.
 
 ## Abilities (11)
 
@@ -123,51 +158,28 @@ This add-on lets the agent inspect scan state, blocked IPs, lockouts, and live t
 
 ## Changelog
 
-### 1.0.9
-- Fixed: `wordfence/list-live-traffic` now degrades cleanly to an empty result when the live-traffic table is unavailable on a site
-- Fixed: `wordfence/list-scan-issues` now degrades cleanly to an empty result when the issues table is unavailable on a site
+### 1.0.13
 
-### 1.0.8
-- Fixed: `wordfence/get-status` now derives firewall mode from actual WAF bootstrap state when config-only status is misleading
-- Fixed: `wordfence/get-status` now reports completed scan time instead of scheduled scan time
-- Fixed: `wordfence/get-status` now counts blocked IPs and lockouts through Wordfence APIs instead of mismatched raw table counts
-- Fixed: `wordfence/start-scan` now reports whether the scan start was verified instead of always claiming success
+- Updated declared WordPress compatibility to 7.0 for current plugin-check requirements
 
-### 1.0.7
-- Fixed: Removed hard plugin header dependency on abilities-api to avoid slug-mismatch activation blocking
-- Updated: README ability list and stable tag sync
+### 1.0.12
 
-### 1.0.6
-- Fixed: `wordfence/get-status` callback now accepts null input from proxy adapters
+- Fixed `wordfence/list-live-traffic` to query the actual current Wordfence `wfhits` columns (`IP`, `URL`, `UA`, etc.) instead of stale field names
+- Fixed live traffic results so existing tables return real rows instead of an empty `traffic` array
 
-### 1.0.5
-- Fixed: no-input abilities now accept `null` input for proxy adapters that drop empty objects
-- Fixed: added optional no-op input key (`_`) for proxy adapters that require non-empty objects
+### 1.0.11
 
-### 1.0.4
-- Fixed: Compatibility for no-input abilities in proxy stacks that pass empty objects as arrays
-- Fixed: Clarified inactive plugin message (`Wordfence plugin is not active.`)
+- Fixed scan status reporting to use Wordfence's real completion and monitor fields instead of treating `lastScanCompleted` as a timestamp
+- Fixed `issues_count` to read from the real Wordfence issues table
+- Improved scan-start verification by checking Wordfence monitor timestamps
 
-### 1.0.3
-- Simplify active checks and cache table existence per request
+### 1.0.10
 
-### 1.0.2
-- Improved: Database queries now use esc_sql() and proper $wpdb->prepare() for WordPress.org compliance
-- Improved: Added phpcs:ignore comments for justified direct database queries to Wordfence tables
+- Fixed Wordfence table resolution on lowercase-table installs so live traffic and scan issues read the real `wfhits` and `wfissues` tables instead of treating them as missing
 
-### 1.0.1
-- Fixed: Updated to use Wordfence 8.x wfBlock API instead of deprecated methods
+## Contributing
 
-### 1.0.0
-- Initial release
-- Added `wordfence/get-status` ability
-- Added `wordfence/list-blocked-ips` ability
-- Added `wordfence/block-ip` ability
-- Added `wordfence/unblock-ip` ability
-- Added `wordfence/list-scan-issues` ability
-- Added `wordfence/list-lockouts` ability
-- Added `wordfence/unlock-ip` ability
-- Added `wordfence/whitelist-ip` ability
+PRs welcome. Keep changes focused on the plugin's WordPress ability surface and preserve authenticated, explicit workflows.
 
 ## License
 
@@ -177,19 +189,20 @@ GPL-2.0+
 
 [Devenia](https://devenia.com) - We've been doing SEO and web development since 1993.
 
-## Free and Open
+## Links
 
-Like the rest of the ecosystem, this add-on is free, completely open, and built for real operational use.
+- [Plugin Page](https://devenia.com/plugins/mcp-expose-abilities/#add-ons)
+- [MCP Expose Abilities](https://devenia.com/plugins/mcp-expose-abilities/)
+- [GitHub Releases](https://github.com/bjornfix/mcp-abilities-wordfence/releases)
 
 ## Star and Share
 
-If this add-on helps, please star the repo, share the ecosystem, and point people to the main wiki:
+If this plugin saves you time or makes WordPress maintenance easier to verify, please:
 
-- https://github.com/bjornfix/mcp-expose-abilities
-- https://github.com/bjornfix/mcp-expose-abilities/wiki
+- star the repo
+- share it with people running WordPress sites
+- point them to the main plugin page so they can see what the ecosystem can actually do
 
-## Links
+Why do it?
 
-- [Core Plugin (MCP Expose Abilities)](https://github.com/bjornfix/mcp-expose-abilities)
-- [Main Wiki](https://github.com/bjornfix/mcp-expose-abilities/wiki)
-- [Wordfence Add-On Guide](https://github.com/bjornfix/mcp-expose-abilities/wiki/Addon-Wordfence)
+Because agent-friendly open WordPress tooling helps more of the boring but important work get done.
