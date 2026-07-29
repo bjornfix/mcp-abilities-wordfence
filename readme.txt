@@ -1,5 +1,5 @@
 === MCP Abilities - Wordfence ===
-Contributors: devenia
+Contributors: basicus
 Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
 Tested up to: 7.0
