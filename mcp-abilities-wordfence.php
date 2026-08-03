@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.13
+ * Version: 1.0.14
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0+
@@ -484,7 +484,21 @@ function mcp_register_wordfence_abilities(): void {
 				$result  = null;
 				$invoked = false;
 
-				if ( class_exists( 'wordfence' ) && method_exists( 'wordfence', 'startScan' ) ) {
+				if ( class_exists( 'wfScanEngine' ) && method_exists( 'wfScanEngine', 'startScan' ) ) {
+					// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Third-party API.
+					$scan_error = wfScanEngine::startScan();
+					$invoked    = true;
+
+					if ( ! empty( $scan_error ) ) {
+						return array(
+							'success'  => false,
+							'verified' => false,
+							'message'  => wp_strip_all_tags( (string) $scan_error ),
+						);
+					}
+				}
+
+				if ( ! $invoked && class_exists( 'wordfence' ) && method_exists( 'wordfence', 'startScan' ) ) {
 					// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Third-party API.
 					$result  = wordfence::startScan();
 					$invoked = true;
@@ -512,7 +526,7 @@ function mcp_register_wordfence_abilities(): void {
 					|| ( (int) $after['last_scan_end_ts'] > (int) $before['last_scan_end_ts'] )
 					|| ( (int) $after['last_scheduled_ts'] > (int) $before['last_scheduled_ts'] );
 
-				if ( false === $result ) {
+				if ( null !== $result && false === $result ) {
 					return array(
 						'success'  => false,
 						'verified' => $verified,

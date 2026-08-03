@@ -4,7 +4,7 @@ Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.13
+Stable tag: 1.0.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ This add-on plugin extends [MCP Expose Abilities](https://devenia.com/plugins/mc
 5. The abilities are now available via the MCP endpoint
 
 == Changelog ==
+
+= 1.0.14 =
+* Fixed: `wordfence/start-scan` now uses the current Wordfence 8.x scan engine entrypoint while preserving compatibility with older supported entrypoints.
 
 = 1.0.13 =
 * Updated: Declared compatibility with WordPress 7.0 for current plugin-check requirements.

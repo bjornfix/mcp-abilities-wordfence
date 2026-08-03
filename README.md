@@ -8,7 +8,7 @@ Wordfence security abilities for MCP. Monitor security status, manage blocked IP
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple.svg)](https://php.net)
 
 **Tested up to:** 7.0
-**Stable tag:** 1.0.13
+**Stable tag:** 1.0.14
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -158,6 +158,10 @@ If you skip base-stack verification and start with add-ons immediately, troubles
 
 ## Changelog
 
+### 1.0.14
+
+- Fixed `wordfence/start-scan` to use the current Wordfence 8.x scan engine entrypoint while preserving compatibility with older supported entrypoints
+
 ### 1.0.13
 
 - Updated declared WordPress compatibility to 7.0 for current plugin-check requirements
@@ -187,7 +191,7 @@ GPL-2.0+
 
 ## Author
 
-[Devenia](https://devenia.com) - We've been doing SEO and web development since 1993.
+[basicus](https://profiles.wordpress.org/basicus/)
 
 ## Links
 
