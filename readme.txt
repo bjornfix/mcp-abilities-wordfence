@@ -2,9 +2,9 @@
 Contributors: basicus
 Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.15
+Stable tag: 1.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,7 +55,7 @@ Read the [product page](https://devenia.com/plugins/mcp-abilities-wordfence/) an
 
 == Changelog ==
 
-= 1.0.15 =
+= 1.0.16 =
 * Read firewall mode from the native Wordfence model.
 * Verify block, unblock, unlock and allowlist results and preserve existing blocks with different durations.
 * Report missing security data and failed database reads explicitly.

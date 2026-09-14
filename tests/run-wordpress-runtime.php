@@ -5,7 +5,7 @@ if ( ! class_exists( 'wordfence' ) || ! function_exists( 'wp_get_ability' ) ) {
 }
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 $plugin = get_plugin_data( WP_PLUGIN_DIR . '/mcp-abilities-wordfence/mcp-abilities-wordfence.php' );
-if ( '1.0.15' !== $plugin['Version'] ) { throw new RuntimeException( 'The exact reviewed version is required.' ); }
+if ( '1.0.16' !== $plugin['Version'] ) { throw new RuntimeException( 'The exact reviewed version is required.' ); }
 $admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) );
 if ( ! $admins ) { throw new RuntimeException( 'An administrator is required.' ); }
 wp_set_current_user( (int) $admins[0] );
