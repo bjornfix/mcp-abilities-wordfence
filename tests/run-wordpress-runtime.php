@@ -5,7 +5,7 @@ if ( ! class_exists( 'wordfence' ) || ! function_exists( 'wp_get_ability' ) ) {
 }
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 $plugin = get_plugin_data( WP_PLUGIN_DIR . '/mcp-abilities-wordfence/mcp-abilities-wordfence.php' );
-if ( '1.0.16' !== $plugin['Version'] ) { throw new RuntimeException( 'The exact reviewed version is required.' ); }
+if ( '1.0.17' !== $plugin['Version'] ) { throw new RuntimeException( 'The exact reviewed version is required.' ); }
 $admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) );
 if ( ! $admins ) { throw new RuntimeException( 'An administrator is required.' ); }
 wp_set_current_user( (int) $admins[0] );
@@ -23,7 +23,7 @@ function wf_runtime_call( $name, $input = array() ) {
 $ip = '203.0.113.241';
 $allow = '203.0.113.242';
 $original_allowlist = array_map( 'trim', explode( ',', (string) wfConfig::get( 'whitelisted', '', false ) ) );
-if ( wfBlock::findIPBlock( $ip ) || wfBlock::lockoutForIP( $ip ) || wfBlock::isWhitelisted( $ip ) || in_array( $allow, $original_allowlist, true ) ) {
+if ( wfBlock::findIPBlock( $ip ) || wfBlock::findIPBlock( $allow ) || wfBlock::lockoutForIP( $ip ) || wfBlock::isWhitelisted( $ip ) || in_array( $allow, $original_allowlist, true ) ) {
  throw new RuntimeException( 'The reserved fixture addresses are already in use.' );
 }
 $created_ids = array();
@@ -58,7 +58,9 @@ try {
  $result = wf_runtime_call( 'whitelist-ip', array( 'ip' => $allow ) );
  wf_runtime_assert( ! empty( $result['success'] ) && in_array( $allow, explode( ',', wfConfig::get( 'whitelisted', '', false ) ), true ), 'Native allowlist entry is persisted' );
  $result = wf_runtime_call( 'block-ip', array( 'ip' => $allow, 'permanent' => true ) );
- wf_runtime_assert( empty( $result['success'] ) && ! wfBlock::findIPBlock( $allow ), 'Native allowlist prevents block and reports rejection' );
+ $unexpected = wfBlock::findIPBlock( $allow );
+ if ( $unexpected ) { $created_ids[] = (int) $unexpected->id; }
+ wf_runtime_assert( empty( $result['success'] ) && ! $unexpected, 'Native allowlist prevents block and reports rejection' );
  wp_set_current_user( 0 );
  $denied = wp_get_ability( 'wordfence/get-status' )->execute( array() );
  wf_runtime_assert( is_wp_error( $denied ), 'Unauthenticated caller cannot read security data' );
@@ -70,5 +72,5 @@ try {
   $current = array_map( 'trim', explode( ',', (string) wfConfig::get( 'whitelisted', '', false ) ) );
   wfConfig::set( 'whitelisted', implode( ',', array_values( array_filter( $current, static fn( $entry ) => $entry !== $allow ) ) ) );
  }
- wf_runtime_assert( ! wfBlock::findIPBlock( $ip ) && ! wfBlock::lockoutForIP( $ip ) && ! in_array( $allow, explode( ',', wfConfig::get( 'whitelisted', '', false ) ), true ), 'Temporary integration data is removed' );
+ wf_runtime_assert( ! wfBlock::findIPBlock( $ip ) && ! wfBlock::findIPBlock( $allow ) && ! wfBlock::lockoutForIP( $ip ) && ! in_array( $allow, explode( ',', wfConfig::get( 'whitelisted', '', false ) ), true ), 'Temporary integration data is removed' );
 }

@@ -3,7 +3,7 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.16
+ * Version: 1.0.17
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0+
@@ -65,6 +65,33 @@ function mcp_wordfence_get_firewall_mode(): string {
 	}
 	$mode = ( new wfFirewall() )->firewallMode();
 	return in_array( $mode, array( 'enabled', 'learning-mode', 'disabled' ), true ) ? $mode : 'unknown';
+}
+
+/**
+ * Match freshly stored user allowlist ranges with Wordfence's native matcher.
+ *
+ * Wordfence caches its combined allowlist for the request. A preceding native
+ * whitelistIP call can therefore leave that combined list stale.
+ *
+ * @param string $ip Address to check.
+ * @return bool
+ * @throws RuntimeException When the native configuration cannot be read.
+ */
+function mcp_wordfence_is_user_allowlisted( string $ip ): bool {
+	if ( ! class_exists( 'wfConfig' ) || ! class_exists( 'wfUserIPRange' ) ) {
+		throw new RuntimeException( 'The native Wordfence allowlist cannot be checked.' );
+	}
+	global $wpdb;
+	$config = (string) wfConfig::get( 'whitelisted', '', false );
+	if ( $wpdb->last_error ) {
+		throw new RuntimeException( 'The Wordfence allowlist could not be read.' );
+	}
+	foreach ( array_filter( array_map( 'trim', explode( ',', $config ) ) ) as $range ) {
+		if ( ( new wfUserIPRange( $range ) )->isIPInRange( $ip ) ) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
@@ -720,6 +747,9 @@ function mcp_register_wordfence_abilities(): void {
 				// Use Wordfence 8.x wfBlock class.
 				if ( class_exists( 'wfBlock' ) ) {
 					try {
+						if ( mcp_wordfence_is_user_allowlisted( $ip ) ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'The address is in the Wordfence allowlist; no block was created.' );
+						}
 						// Check if already blocked.
 						global $wpdb;
 						$existing = wfBlock::findIPBlock( $ip );

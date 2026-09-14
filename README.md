@@ -2,14 +2,14 @@
 
 Let your AI assistant investigate a WordPress login problem, follow a security scan and review suspicious traffic using the Wordfence data already on your site. When you choose a response, the assistant can release a lockout, add or remove an IP block, or add a specific address to Wordfence's allowlist.
 
-[![Release](https://img.shields.io/badge/release-1.0.16-blue)](https://downloads.devenia.com/mcp-abilities-wordfence.zip)
+[![Release](https://img.shields.io/badge/release-1.0.17-blue)](https://downloads.devenia.com/mcp-abilities-wordfence.zip)
 [![License](https://img.shields.io/badge/license-GPLv2%2B-blue)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)](https://www.php.net/)
 
 **Tested up to:** 7.1
 
-**Stable tag:** 1.0.16
+**Stable tag:** 1.0.17
 
 **License:** GPLv2 or later
 
@@ -159,9 +159,10 @@ Temporary blocks use Wordfence's configured duration. An existing block with a d
 
 ## Changelog
 
-### 1.0.16
+### 1.0.17
 
 - Read firewall mode from Wordfence's native model instead of inferring it from bootstrap files.
+- Honour freshly stored allowlist entries during subsequent operations in the same request.
 - Verify IP-block, unblock, login-unlock and native allowlist results; preserve existing blocks with different durations.
 - Report unavailable security data and failed reads explicitly.
 - Require actual scan activity to verify a start and clarify timestamp meanings.

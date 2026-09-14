@@ -13,7 +13,8 @@ function wp_strip_all_tags( $value ) { return strip_tags( $value ); }
 function trailingslashit( $value ) { return rtrim( $value, '/' ) . '/'; }
 function untrailingslashit( $value ) { return rtrim( $value, '/' ); }
 class wordfence {
- public static function whitelistIP( $ip ) { return true; }
+ public static $write = false;
+ public static function whitelistIP( $ip ) { if ( self::$write ) { wfConfig::$data['whitelisted'] = $ip; } return true; }
 }
 class wfDB {
  public static function networkTable( $name ) { return 'wp_' . $name; }
@@ -38,11 +39,16 @@ class wfBlock {
  const DURATION_FOREVER = 0;
  public static function validate( $payload ) { return true; }
  public static $block = null;
+ public static $create = false;
  public static function findIPBlock( $ip ) { return self::$block; }
  public static function lockoutForIP( $ip ) { return self::$block; }
- public static function createIP( ...$args ) { return false; }
+ public static function createIP( $reason, $ip, $duration ) { if ( self::$create ) { self::$block = (object) array( 'id' => 2, 'expiration' => $duration ? time() + $duration : 0 ); } return false; }
  public static function blockDuration() { return 60; }
  public static function removeBlockIDs( ...$args ) { return false; }
+}
+class wfUserIPRange {
+ public function __construct( private $range ) {}
+ public function isIPInRange( $ip ) { return $this->range === $ip; }
 }
 class wfScanner {
  public static $scheduled = 100;
@@ -68,6 +74,9 @@ check_result( false === call_ability( 'whitelist-ip', array( 'ip' => '192.0.2.12
 check_result( false === call_ability( 'start-scan' )['verified'], 'An attempt and future schedule change do not prove a scan started' );
 wfBlock::$block = (object) array( 'id' => 1, 'expiration' => time() + 60 );
 check_result( false === call_ability( 'block-ip', array( 'ip' => '192.0.2.12', 'permanent' => true ) )['success'], 'Existing temporary block is not reported as permanent' );
+wfBlock::$block = null; wfBlock::$create = true; wordfence::$write = true;
+call_ability( 'whitelist-ip', array( 'ip' => '192.0.2.14' ) );
+check_result( false === call_ability( 'block-ip', array( 'ip' => '192.0.2.14', 'permanent' => true ) )['success'] && null === wfBlock::$block, 'A newly stored allowlist entry prevents a same-request block' );
 check_result( false === call_ability( 'list-live-traffic' )['success'], 'Traffic database error is not an empty successful report' );
 check_result( false === call_ability( 'list-scan-issues' )['success'], 'Scan issue database error is reported' );
 $GLOBALS['multisite'] = true;
