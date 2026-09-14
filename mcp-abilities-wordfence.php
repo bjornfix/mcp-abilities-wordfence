@@ -3,11 +3,11 @@
  * Plugin Name: MCP Abilities - Wordfence
  * Plugin URI: https://github.com/bjornfix/mcp-abilities-wordfence
  * Description: Wordfence security abilities for MCP. Monitor security status, manage blocked IPs, view scan issues, and control lockouts.
- * Version: 1.0.14
+ * Version: 1.0.15
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0+
- * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Requires at least: 6.9
  * Requires PHP: 8.0
  *
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function mcp_wordfence_check_dependencies(): bool {
 	if ( ! function_exists( 'wp_register_ability' ) ) {
 		add_action( 'admin_notices', function () {
-			echo '<div class="notice notice-error"><p><strong>MCP Abilities - Wordfence</strong> requires the <a href="https://github.com/WordPress/abilities-api">Abilities API</a> plugin to be installed and activated.</p></div>';
+			echo '<div class="notice notice-error"><p><strong>MCP Abilities - Wordfence</strong> requires WordPress 6.9 or later with its built-in Abilities API.</p></div>';
 		} );
 		return false;
 	}
@@ -55,99 +55,16 @@ function mcp_wordfence_require_active(): ?array {
 }
 
 /**
- * Check whether a file contains a marker string.
- *
- * @param string $path File path.
- * @param string $needle Marker string.
- * @return bool
- */
-function mcp_wordfence_file_contains( string $path, string $needle ): bool {
-	if ( ! is_readable( $path ) ) {
-		return false;
-	}
-
-	$content = file_get_contents( $path );
-	if ( false === $content ) {
-		return false;
-	}
-
-	return false !== strpos( $content, $needle );
-}
-
-/**
- * Read the serialized WAF config stored in wp-content/wflogs/config.php.
- *
- * @return array<string, mixed>|null
- */
-function mcp_wordfence_read_waf_config(): ?array {
-	$config_path = trailingslashit( ABSPATH ) . 'wp-content/wflogs/config.php';
-	if ( ! is_readable( $config_path ) ) {
-		return null;
-	}
-
-	$content = file_get_contents( $config_path );
-	if ( false === $content ) {
-		return null;
-	}
-
-	if ( ! preg_match( '/(a:\d+:\{.*\})\s*$/s', $content, $matches ) ) {
-		return null;
-	}
-
-	$data = @unserialize( $matches[1], array( 'allowed_classes' => false ) );
-	if ( ! is_array( $data ) ) {
-		return null;
-	}
-
-	return $data;
-}
-
-/**
- * Detect Wordfence firewall mode using both Wordfence config and WAF bootstrap files.
+ * Read the firewall mode through the same native model as Wordfence's dashboard.
  *
  * @return string
  */
 function mcp_wordfence_get_firewall_mode(): string {
-	$config_status = '';
-	if ( class_exists( 'wfConfig' ) ) {
-		$config_status = strtolower( (string) wfConfig::get( 'wafStatus', '' ) );
+	if ( ! class_exists( 'wfFirewall' ) ) {
+		return 'unknown';
 	}
-
-	$waf_config      = mcp_wordfence_read_waf_config();
-	$file_status     = is_array( $waf_config ) && isset( $waf_config['wafStatus'] ) ? strtolower( (string) $waf_config['wafStatus'] ) : '';
-	$file_is_enabled = is_array( $waf_config ) && array_key_exists( 'wafDisabled', $waf_config ) ? ! (bool) $waf_config['wafDisabled'] : null;
-
-	$root            = untrailingslashit( ABSPATH );
-	$bootstrap_file  = $root . '/wordfence-waf.php';
-	$bootstrap_ready = is_readable( $bootstrap_file );
-	$prepend_ready   = mcp_wordfence_file_contains( $root . '/.user.ini', 'wordfence-waf.php' )
-		|| mcp_wordfence_file_contains( $root . '/.htaccess', 'wordfence-waf.php' );
-
-	if ( $bootstrap_ready && $prepend_ready ) {
-		if ( null !== $file_is_enabled && $file_is_enabled && '' !== $file_status ) {
-			return $file_status;
-		}
-
-		if ( '' !== $file_status && 'disabled' !== $file_status ) {
-			return $file_status;
-		}
-
-		if ( '' !== $config_status && 'disabled' !== $config_status ) {
-			return $config_status;
-		}
-
-		return 'enabled';
-	}
-
-	if ( '' !== $file_status ) {
-		return $file_status;
-	}
-
-	if ( '' !== $config_status ) {
-		return $config_status;
-	}
-
-	return 'unknown';
+	$mode = ( new wfFirewall() )->firewallMode();
+	return in_array( $mode, array( 'enabled', 'learning-mode', 'disabled' ), true ) ? $mode : 'unknown';
 }
 
 /**
@@ -162,6 +79,7 @@ function mcp_wordfence_get_scan_state(): array {
 	$scheduled    = 0;
 	$status       = '';
 	$last_attempt = 0;
+	$last_success = 0;
 
 	if ( class_exists( 'wfConfig' ) ) {
 		$scan_running   = class_exists( 'wfScanner' ) && method_exists( 'wfScanner', 'shared' )
@@ -174,7 +92,8 @@ function mcp_wordfence_get_scan_state(): array {
 		$scheduled      = class_exists( 'wfScanner' ) && method_exists( 'wfScanner', 'shared' )
 			? (int) wfScanner::shared()->nextScheduledScanTime()
 			: (int) wfConfig::get( 'lastScheduledScan', 0 );
-		$last_attempt   = (int) wfConfig::get( 'scanMonitorLastAttempt', 0 );
+		$last_attempt   = (int) wfConfig::get( 'scanMonitorLastAttempt', 0, false );
+		$last_success   = (int) wfConfig::get( 'scanMonitorLastSuccess', 0, false );
 		$last_completed = (string) wfConfig::get( 'lastScanCompleted', '' );
 		$failure_type   = (string) wfConfig::get( 'lastScanFailureType', '' );
 		$has_failed     = class_exists( 'wfIssues' ) && method_exists( 'wfIssues', 'hasScanFailed' )
@@ -204,6 +123,7 @@ function mcp_wordfence_get_scan_state(): array {
 		'last_scan_end_ts'   => $end_time,
 		'last_scheduled_ts'  => $scheduled,
 		'last_attempt_ts'    => $last_attempt,
+		'last_success_ts'    => $last_success,
 	);
 }
 
@@ -276,7 +196,7 @@ function mcp_wordfence_table_exists( string $table ): bool {
 
 	global $wpdb;
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time table existence.
-	$exists = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table );
+	$exists = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) === $table );
 	$cache[ $table ] = $exists;
 
 	return $exists;
@@ -347,8 +267,16 @@ function mcp_register_wordfence_abilities(): void {
 					$issues_count = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM `' . esc_sql( $issues_table ) . '` WHERE status = %s', 'new' ) );
 				}
 
+				if ( ! mcp_wordfence_table_exists( $issues_table ) || $wpdb->last_error || ! class_exists( 'wfBlock' ) ) {
+					return array( 'success' => false, 'message' => 'Wordfence security status is unavailable because its data could not be read.' );
+				}
+
 				$blocked_count = mcp_wordfence_count_blocked_ips();
+				$block_error = $wpdb->last_error;
 				$locked_count  = mcp_wordfence_count_lockouts();
+				if ( $block_error || $wpdb->last_error ) {
+					return array( 'success' => false, 'message' => 'Wordfence block or lockout counts could not be read.' );
+				}
 
 				// Check premium status.
 				$is_premium = false;
@@ -369,7 +297,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -405,9 +333,9 @@ function mcp_register_wordfence_abilities(): void {
 				'properties' => array(
 					'success'          => array( 'type' => 'boolean' ),
 					'scan_running'     => array( 'type' => 'boolean' ),
-					'last_scan_start'  => array( 'type' => 'string' ),
-					'last_scan_end'    => array( 'type' => 'string' ),
-					'last_scheduled'   => array( 'type' => 'string' ),
+					'last_scan_start'  => array( 'type' => 'string', 'description' => 'UTC start time of the last scheduled scan, or never. This does not cover manual starts.' ),
+					'last_scan_end'    => array( 'type' => 'string', 'description' => 'UTC time when Wordfence last recorded a finished scan, including failures. Check last_scan_status.' ),
+					'last_scheduled'   => array( 'type' => 'string', 'description' => 'Next scheduled scan time in UTC, despite the legacy field name.' ),
 					'last_scan_status' => array( 'type' => 'string' ),
 					'message'          => array( 'type' => 'string' ),
 				),
@@ -436,7 +364,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -481,7 +409,6 @@ function mcp_register_wordfence_abilities(): void {
 				}
 
 				$before  = mcp_wordfence_get_scan_state();
-				$result  = null;
 				$invoked = false;
 
 				if ( class_exists( 'wfScanEngine' ) && method_exists( 'wfScanEngine', 'startScan' ) ) {
@@ -498,18 +425,6 @@ function mcp_register_wordfence_abilities(): void {
 					}
 				}
 
-				if ( ! $invoked && class_exists( 'wordfence' ) && method_exists( 'wordfence', 'startScan' ) ) {
-					// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Third-party API.
-					$result  = wordfence::startScan();
-					$invoked = true;
-				}
-
-				if ( ! $invoked && class_exists( 'wfScan' ) && method_exists( 'wfScan', 'startScan' ) ) {
-					// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Third-party API.
-					$result  = wfScan::startScan();
-					$invoked = true;
-				}
-
 				if ( ! $invoked ) {
 					return array(
 						'success'  => false,
@@ -520,19 +435,8 @@ function mcp_register_wordfence_abilities(): void {
 
 				$after    = mcp_wordfence_get_scan_state();
 				$verified = (bool) $after['scan_running']
-					|| ( (int) $after['last_attempt_ts'] > (int) $before['last_attempt_ts'] )
-					|| ( (int) $after['last_scan_start_ts'] > (int) $before['last_scan_start_ts'] )
-					|| ( (string) $after['last_scan_status'] !== (string) $before['last_scan_status'] )
-					|| ( (int) $after['last_scan_end_ts'] > (int) $before['last_scan_end_ts'] )
-					|| ( (int) $after['last_scheduled_ts'] > (int) $before['last_scheduled_ts'] );
-
-				if ( null !== $result && false === $result ) {
-					return array(
-						'success'  => false,
-						'verified' => $verified,
-						'message'  => 'Wordfence rejected the scan start request.',
-					);
-				}
+					|| ( (int) $after['last_success_ts'] > (int) $before['last_success_ts'] )
+					|| ( (int) $after['last_scan_end_ts'] > (int) $before['last_scan_end_ts'] );
 
 				if ( $verified ) {
 					return array(
@@ -549,7 +453,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -617,7 +521,11 @@ function mcp_register_wordfence_abilities(): void {
 				$offset   = ( $page - 1 ) * $per_page;
 
 				// Get IP blocks only (prefetch=true to load all data).
+				global $wpdb;
 				$all_blocks = wfBlock::ipBlocks( true );
+				if ( $wpdb->last_error || ! is_array( $all_blocks ) ) {
+					return array( 'success' => false, 'message' => 'Wordfence IP blocks could not be read.' );
+				}
 				$total      = count( $all_blocks );
 				$pages      = (int) ceil( $total / $per_page );
 
@@ -645,7 +553,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -704,7 +612,7 @@ function mcp_register_wordfence_abilities(): void {
 
 					if ( ! mcp_wordfence_table_exists( $table ) ) {
 						return array(
-							'success' => true,
+							'success' => false,
 							'traffic' => array(),
 							'total'   => 0,
 							'message' => 'Wordfence live traffic is unavailable on this site because the live traffic table is not present.',
@@ -724,8 +632,14 @@ function mcp_register_wordfence_abilities(): void {
 						),
 						ARRAY_A
 					);
+					if ( $wpdb->last_error || ! is_array( $rows ) ) {
+						return array( 'success' => false, 'message' => 'Wordfence traffic could not be read.' );
+					}
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only count query for pagination metadata.
-					$total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $table ) . '`' );
+					$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $table ) );
+					if ( $wpdb->last_error ) {
+						return array( 'success' => false, 'message' => 'Wordfence traffic count could not be read.' );
+					}
 
 					return array(
 						'success' => true,
@@ -734,7 +648,7 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -807,8 +721,15 @@ function mcp_register_wordfence_abilities(): void {
 				if ( class_exists( 'wfBlock' ) ) {
 					try {
 						// Check if already blocked.
+						global $wpdb;
 						$existing = wfBlock::findIPBlock( $ip );
+						if ( $wpdb->last_error ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'The current Wordfence restriction could not be read; no change was made.' );
+						}
 						if ( $existing ) {
+							if ( $permanent !== ( 0 === (int) $existing->expiration ) ) {
+								return array( 'success' => false, 'ip' => $ip, 'message' => 'An existing block has a different duration. Its settings were preserved; review it before replacing it.' );
+							}
 							return array(
 								'success' => true,
 								'ip'      => $ip,
@@ -816,16 +737,27 @@ function mcp_register_wordfence_abilities(): void {
 							);
 						}
 
-						// DURATION_FOREVER = null for permanent, otherwise seconds.
-						$duration = $permanent ? null : wfBlock::blockDuration();
+						// Use Wordfence's duration constant for permanent blocks.
+						$duration = $permanent ? wfBlock::DURATION_FOREVER : wfBlock::blockDuration();
+						if ( ! $permanent && $duration <= 0 ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'Wordfence has no positive temporary-block duration configured.' );
+						}
+						$valid = wfBlock::validate( array( 'type' => 'ip-address', 'ip' => $ip, 'reason' => $reason, 'duration' => $duration ) );
+						if ( true !== $valid ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => wp_strip_all_tags( (string) $valid ) );
+						}
 						wfBlock::createIP( $reason, $ip, $duration );
+						$saved = wfBlock::findIPBlock( $ip );
+						if ( ! $saved || ( $permanent && 0 !== (int) $saved->expiration ) || ( ! $permanent && (int) $saved->expiration <= time() ) ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'Wordfence did not persist the requested IP block. The address may be allowlisted or storage may be unavailable.' );
+						}
 
 						return array(
 							'success' => true,
 							'ip'      => $ip,
 							'message' => $permanent ? 'IP permanently blocked.' : 'IP blocked.',
 						);
-					} catch ( Exception $e ) {
+					} catch ( Throwable $e ) {
 						return array(
 							'success' => false,
 							'ip'      => $ip,
@@ -841,7 +773,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 				'meta'                => array(
 					'annotations' => array(
@@ -900,7 +832,11 @@ function mcp_register_wordfence_abilities(): void {
 				// Use Wordfence 8.x wfBlock class.
 				if ( class_exists( 'wfBlock' ) ) {
 					try {
+						global $wpdb;
 						$block = wfBlock::findIPBlock( $ip );
+						if ( $wpdb->last_error ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'The current Wordfence restriction could not be read; no change was made.' );
+						}
 						if ( ! $block ) {
 							return array(
 								'success' => true,
@@ -909,14 +845,17 @@ function mcp_register_wordfence_abilities(): void {
 							);
 						}
 
-						wfBlock::removeBlockIDs( array( $block->id ) );
+						$removed = wfBlock::removeBlockIDs( array( $block->id ) );
+						if ( ! $removed || wfBlock::findIPBlock( $ip ) || $wpdb->last_error ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'An IP block remains. Review the current block list before another change.' );
+						}
 
 						return array(
 							'success' => true,
 							'ip'      => $ip,
 							'message' => 'IP unblocked.',
 						);
-					} catch ( Exception $e ) {
+					} catch ( Throwable $e ) {
 						return array(
 							'success' => false,
 							'ip'      => $ip,
@@ -932,7 +871,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 				'meta'                => array(
 					'annotations' => array(
@@ -1001,7 +940,7 @@ function mcp_register_wordfence_abilities(): void {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check.
 					if ( ! mcp_wordfence_table_exists( $table ) ) {
 						return array(
-							'success' => true,
+							'success' => false,
 							'items'   => array(),
 							'total'   => 0,
 							'page'    => 1,
@@ -1026,6 +965,7 @@ function mcp_register_wordfence_abilities(): void {
 								$table
 							)
 						);
+						$count_error = $wpdb->last_error;
 						$results = $wpdb->get_results(
 							$wpdb->prepare(
 								'SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM %i ORDER BY time DESC LIMIT %d OFFSET %d',
@@ -1045,6 +985,7 @@ function mcp_register_wordfence_abilities(): void {
 								$status
 							)
 						);
+						$count_error = $wpdb->last_error;
 						$results = $wpdb->get_results(
 							$wpdb->prepare(
 								'SELECT id, time, status, type, severity, ignoreP, ignoreC, shortMsg, longMsg, data FROM %i WHERE status = %s ORDER BY time DESC LIMIT %d OFFSET %d',
@@ -1057,11 +998,15 @@ function mcp_register_wordfence_abilities(): void {
 					);
 					// phpcs:enable
 				}
+				if ( $count_error || $wpdb->last_error || ! is_array( $results ) ) {
+					return array( 'success' => false, 'message' => 'Wordfence scan issues could not be read.' );
+				}
 				$pages = (int) ceil( $total / $per_page );
 
 				$items = array();
 				foreach ( $results as $row ) {
-					$data = maybe_unserialize( $row['data'] );
+					$data = is_serialized( $row['data'] ) ? unserialize( $row['data'], array( 'allowed_classes' => false ) ) : array();
+					$data = is_array( $data ) ? $data : array();
 
 					$items[] = array(
 						'id'          => (int) $row['id'],
@@ -1085,7 +1030,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -1153,9 +1098,10 @@ function mcp_register_wordfence_abilities(): void {
 				$offset   = ( $page - 1 ) * $per_page;
 
 					// Avoid prefetch-heavy mode when listing lockouts.
+					global $wpdb;
 					$all_lockouts = wfBlock::lockouts( false );
-					if ( ! is_array( $all_lockouts ) ) {
-						$all_lockouts = array();
+					if ( $wpdb->last_error || ! is_array( $all_lockouts ) ) {
+						return array( 'success' => false, 'message' => 'Wordfence lockouts could not be read.' );
 					}
 				$total        = count( $all_lockouts );
 				$pages        = (int) ceil( $total / $per_page );
@@ -1184,7 +1130,7 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
@@ -1248,7 +1194,11 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
+				global $wpdb;
 				$lockout = wfBlock::lockoutForIP( $ip );
+				if ( $wpdb->last_error ) {
+					return array( 'success' => false, 'ip' => $ip, 'message' => 'The current Wordfence restriction could not be read; no change was made.' );
+				}
 				if ( ! $lockout ) {
 					return array(
 						'success' => true,
@@ -1257,7 +1207,10 @@ function mcp_register_wordfence_abilities(): void {
 					);
 				}
 
-				wfBlock::removeBlockIDs( array( $lockout->id ) );
+				$removed = wfBlock::removeBlockIDs( array( $lockout->id ) );
+				if ( ! $removed || wfBlock::lockoutForIP( $ip ) || $wpdb->last_error ) {
+					return array( 'success' => false, 'ip' => $ip, 'message' => 'The login lockout remains. Review the current lockout list before another change.' );
+				}
 
 				return array(
 					'success' => true,
@@ -1266,12 +1219,12 @@ function mcp_register_wordfence_abilities(): void {
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
 					'readonly'    => false,
-					'destructive' => false,
+					'destructive' => true,
 					'idempotent'  => true,
 				),
 			),
@@ -1285,7 +1238,7 @@ function mcp_register_wordfence_abilities(): void {
 		'wordfence/whitelist-ip',
 		array(
 			'label'               => 'Whitelist IP Address',
-			'description'         => 'Add an IP address to the Wordfence allowlist so it will never be blocked.',
+			'description'         => 'Add an IP address to the Wordfence allowlist. Traffic from the address bypasses Wordfence security checks; this is broader than releasing a lockout.',
 			'category'            => 'site',
 			'input_schema'        => array(
 				'type'                 => 'object',
@@ -1326,12 +1279,16 @@ function mcp_register_wordfence_abilities(): void {
 				if ( method_exists( 'wordfence', 'whitelistIP' ) ) {
 					try {
 						$result = wordfence::whitelistIP( $ip );
+						$saved = class_exists( 'wfConfig' ) ? array_map( 'trim', explode( ',', (string) wfConfig::get( 'whitelisted', '', false ) ) ) : array();
+						if ( ! in_array( $ip, $saved, true ) ) {
+							return array( 'success' => false, 'ip' => $ip, 'message' => 'The native allowlist update could not be verified.' );
+						}
 						return array(
 							'success' => true,
 							'ip'      => $ip,
 							'message' => $result ? 'IP added to allowlist.' : 'IP already in allowlist.',
 						);
-					} catch ( Exception $e ) {
+					} catch ( Throwable $e ) {
 						return array(
 							'success' => false,
 							'ip'      => $ip,
@@ -1340,43 +1297,19 @@ function mcp_register_wordfence_abilities(): void {
 					}
 				}
 
-				// Fallback: update whitelisted config.
-				if ( class_exists( 'wfConfig' ) ) {
-					$whitelist = wfConfig::get( 'whitelisted', '' );
-					$ips       = array_filter( array_map( 'trim', explode( "\n", $whitelist ) ) );
-
-					if ( in_array( $ip, $ips, true ) ) {
-						return array(
-							'success' => true,
-							'ip'      => $ip,
-							'message' => 'IP already in allowlist.',
-						);
-					}
-
-					$ips[]        = $ip;
-					$new_whitelist = implode( "\n", $ips );
-					wfConfig::set( 'whitelisted', $new_whitelist );
-
-					return array(
-						'success' => true,
-						'ip'      => $ip,
-						'message' => 'IP added to allowlist.',
-					);
-				}
-
 				return array(
 					'success' => false,
 					'ip'      => $ip,
-					'message' => 'Could not access Wordfence configuration.',
+					'message' => 'The native Wordfence allowlist function is unavailable.',
 				);
 			},
 			'permission_callback' => function (): bool {
-				return current_user_can( 'manage_options' );
+				return current_user_can( is_multisite() ? 'manage_network' : 'manage_options' );
 			},
 			'meta'                => array(
 				'annotations' => array(
 					'readonly'    => false,
-					'destructive' => false,
+					'destructive' => true,
 					'idempotent'  => true,
 				),
 			),
