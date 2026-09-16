@@ -2,14 +2,14 @@
 
 Let your AI assistant investigate a WordPress login problem, follow a security scan and review suspicious traffic using the Wordfence data already on your site. When you choose a response, the assistant can release a lockout, add or remove an IP block, or add a specific address to Wordfence's allowlist.
 
-[![Release](https://img.shields.io/badge/release-1.0.17-blue)](https://downloads.devenia.com/mcp-abilities-wordfence.zip)
+[![Release](https://img.shields.io/badge/release-1.0.18-blue)](https://downloads.devenia.com/mcp-abilities-wordfence.zip)
 [![License](https://img.shields.io/badge/license-GPLv2%2B-blue)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)](https://www.php.net/)
 
 **Tested up to:** 7.1
 
-**Stable tag:** 1.0.17
+**Stable tag:** 1.0.18
 
 **License:** GPLv2 or later
 
@@ -152,12 +152,20 @@ Temporary blocks use Wordfence's configured duration. An existing block with a d
 
 ## Installation
 
+
+For update notifications in WordPress, install [Devenia MCP Updater](https://downloads.devenia.com/devenia-mcp-updater.zip). The updater is optional. You choose which plugins update automatically through WordPress.
+
 1. Install and configure Wordfence Security and the base MCP stack.
 2. [Download the ZIP](https://downloads.devenia.com/mcp-abilities-wordfence.zip).
 3. In WordPress, open **Plugins → Add New Plugin → Upload Plugin**, select the ZIP and activate it.
 4. Discover the `wordfence/*` abilities through the authenticated client and read the status.
 
 ## Changelog
+
+
+### 1.0.18
+
+Add one dismissible Plugins-screen reminder when Devenia MCP Updater is missing or inactive, with persistent install or activate links. Automatic updates remain your choice in WordPress.
 
 ### 1.0.17
 

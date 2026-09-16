@@ -4,7 +4,7 @@ Tags: security, wordfence, mcp, api, automation
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.17
+Stable tag: 1.0.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,12 +48,17 @@ Read the [product page](https://devenia.com/plugins/mcp-abilities-wordfence/) an
 
 == Installation ==
 
+For update notifications in WordPress, install [Devenia MCP Updater](https://downloads.devenia.com/devenia-mcp-updater.zip). The updater is optional. You choose which plugins update automatically through WordPress.
+
 1. Install and configure Wordfence Security and the base MCP stack.
 2. Upload and activate mcp-abilities-wordfence through Plugins in WordPress.
 3. Discover the wordfence abilities in the authenticated client.
 4. Read the status before selecting a task.
 
 == Changelog ==
+
+= 1.0.18 =
+* Add one dismissible Plugins-screen reminder when Devenia MCP Updater is missing or inactive, with persistent install or activate links. Automatic updates remain your choice in WordPress.
 
 = 1.0.17 =
 * Read firewall mode from the native Wordfence model.
